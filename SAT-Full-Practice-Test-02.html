@@ -271,7 +271,7 @@ const breakdown=(ix,field)=>{const keys=[...new Set(ix.map(i=>ALL[i][field]))];r
 function finish(timeUp){
  if(done)return;done=true;clearInterval(tmr);clearInterval(brkT);
  const a=scEN(),b=scMA(),sc=a+b,nRight=ALL.filter((_,i)=>st(i)==='ok').length,ans=picks.filter(Boolean).length;
- const h=LS.get(KEY);const hh=Array.isArray(h)?h:[];hh.push({n:name,sc,d:new Date().toISOString()});LS.set(KEY,hh);
+ const h=LS.get(KEY);const hh=Array.isArray(h)?h:[];hh.push({n:name,sc,d:new Date().toISOString()});LS.set(KEY,hh);try{const tm=location.pathname.match(/Test-(\d+)/i);window.clcReport&&clcReport({src:'full',subject:'both',chapter:'Full Practice Test',skill:'test-'+(tm?+tm[1]:'x'),kind:'FullTest',ref:'full-test-'+(tm?+tm[1]:'x'),correct:nRight,total:N,score:sc,enScore:a,mathScore:b})}catch(_e){}
  const best=Math.max(...hh.filter(x=>x.n.trim().toLowerCase()===name.trim().toLowerCase()).map(x=>x.sc));
  $('rname').textContent=name;
  $('rdate').textContent=DATA.title+' Â· '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
@@ -290,4 +290,4 @@ $('pdf').onclick=async()=>{const t=document.title;document.title=DATA.title+' â€
  await Promise.race([Promise.all(imgs.map(i=>i.decode().catch(()=>{}))),new Promise(r=>setTimeout(r,15000))]);
  window.print();setTimeout(()=>document.title=t,600)};
 $('retry').onclick=()=>{$('nm').value=name;showHist();$('tb-sec').textContent='Digital SAT';lastTimeUp=false;show('s-name')};
-</script></body></html>
+</script><script src="https://stavros-tsal.github.io/sat-greek/results.js"></script></body></html>
