@@ -81,6 +81,20 @@ fieldset.col label b{flex:0 0 22px}
 #zbody{flex:1;overflow:auto;padding:16px;-webkit-overflow-scrolling:touch}
 #zin{background:#fff;border-radius:8px;padding:12px;margin:0 auto;font-size:17px}
 #zin img{width:100%;height:auto;display:block}
+
+#hl-tools{display:inline-flex;gap:6px;align-items:center}
+#hl-tools button.on{background:#ffe066;color:#3a2f00;box-shadow:0 0 0 2px #c9a400 inset}
+.zw{position:relative}
+.zb{z-index:3}
+.hlc{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:multiply;z-index:2;touch-action:auto}
+body.hl-pen .hlc,body.hl-erase .hlc{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+body.hl-pen .hlc{cursor:crosshair}
+body.hl-erase .hlc{cursor:cell}
+body.hl-pen .zw img.q,body.hl-erase .zw img.q{cursor:crosshair;-webkit-user-drag:none}
+#zin{position:relative}
+.hlzc{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:multiply}
+.topbar{flex-wrap:wrap}
+@media print{.hlc,.hlzc,#hl-tools{display:none!important}}
 @media(max-width:520px){main{padding:0 10px 60px}.card{padding:16px}h1{font-size:23px}fieldset{gap:7px}fieldset label{padding:10px}.score{font-size:36px}}
 @media print{
  @page{size:A4;margin:14mm}
@@ -92,7 +106,7 @@ fieldset.col label b{flex:0 0 22px}
  .score{font-size:30px}h1{font-size:20px}
 }
 </style></head><body>
-<div class="topbar"><span id="tb-sec">Digital SAT</span><span class="nm">Tsalapatis Stavros</span><button id="desmos-btn" type="button" class="hide">🖩 Desmos</button></div>
+<div class="topbar"><span id="tb-sec">Digital SAT</span><span class="nm">Tsalapatis Stavros</span><span id="hl-tools" class="hide"><button id="hl-btn" type="button" title="Highlight text: press and drag across a line">🖍 Highlighter</button><button id="hl-er" type="button" title="Erase highlights: click or drag over a highlight">Eraser</button><button id="hl-clr" type="button" title="Remove all highlights in this module">Clear</button></span><button id="desmos-btn" type="button" class="hide">🖩 Desmos</button></div>
 <div id="desmos-panel"><div id="desmos-head"><span>Desmos Graphing Calculator</span><button id="desmos-x" type="button">Close</button></div><div id="desmos-body"></div></div>
 
 <button class="ref-fab hide" id="ref-fab" type="button"><span>📋</span><span>Reference</span></button>
@@ -178,6 +192,8 @@ function toggleDesmos(){
 const refO=()=>{$('ref-modal').classList.add('active');document.body.style.overflow='hidden'},refC=()=>{$('ref-modal').classList.remove('active');document.body.style.overflow=''};
 $('ref-fab').onclick=refO;$('ref-close').onclick=refC;$('ref-modal').addEventListener('click',e=>{if(e.target===$('ref-modal'))refC()});document.addEventListener('keydown',e=>{if(e.key==='Escape'){refC();zclose()}});
 $('desmos-btn').onclick=toggleDesmos;$('desmos-x').onclick=toggleDesmos;
+function desClamp(){const p=$('desmos-panel');if(!p.style.left)return;const r=p.getBoundingClientRect();p.style.left=Math.max(0,Math.min(innerWidth-Math.min(r.width,200),r.left))+'px';p.style.top=Math.max(0,Math.min(innerHeight-44,r.top))+'px'}
+addEventListener('resize',desClamp);
 
 /* ---- data ---- */
 const MODS=DATA.mods;           // [{sec,m,label,items:[...]}]
@@ -205,8 +221,8 @@ $('nm').addEventListener('input',()=>{$('nmerr').classList.add('hide');showHist(
 const ZB='<button type="button" class="zb" aria-label="Zoom">🔍 Zoom</button>';
 const imgTag=(src,alt,eager)=>`<div class="zw"><img class="q" alt="${esc(alt)}" src="${src}" loading="${eager?'eager':'lazy'}" decoding="async">${ZB}</div>`;
 let zz=1.5,zimg=true;
-function zapply(){const z=$('zin');if(zimg){z.style.width=(zz*100)+'%';z.style.fontSize=''}else{z.style.width='';z.style.fontSize=(17*zz)+'px'}$('zp').textContent=Math.round(zz*100)+'%'}
-function zopen(w){const im=w.querySelector('img'),src=im||w.querySelector('.qt');zimg=!!im;const c=src.cloneNode(true);c.removeAttribute('loading');$('zin').innerHTML='';$('zin').appendChild(c);zz=zimg?1.6:1.4;zapply();$('zoom').classList.add('active');document.body.style.overflow='hidden';$('zbody').scrollTo(0,0)}
+function zapply(){const z=$('zin');if(zimg){z.style.width=(zz*100)+'%';z.style.fontSize=''}else{z.style.width='';z.style.fontSize=(17*zz)+'px'}$('zp').textContent=Math.round(zz*100)+'%';hlZoomDraw()}
+function zopen(w){const im=w.querySelector('img'),src=im||w.querySelector('.qt');zimg=!!im;const c=src.cloneNode(true);c.removeAttribute('loading');$('zin').innerHTML='';$('zin').appendChild(c);hlZoomInit(w);zz=zimg?1.6:1.4;zapply();$('zoom').classList.add('active');document.body.style.overflow='hidden';$('zbody').scrollTo(0,0)}
 function zclose(){$('zoom').classList.remove('active');document.body.style.overflow=''}
 $('zm').onclick=()=>{zz=Math.max(1,zz-.25);zapply()};$('zpl').onclick=()=>{zz=Math.min(4,zz+.25);zapply()};$('zx').onclick=zclose;
 document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest('.zw');if(w&&!$('zoom').contains(e.target))zopen(w)});
@@ -217,6 +233,53 @@ function qHTML(i,k){const d=ALL[i];let h=`<section class="card"><h2>Question ${d
  const col=!!d.opts;
  h+=`<fieldset class="${col?'col':''}" aria-label="Answer for question ${d.n}">`+LET.map((l,j)=>{const cx=elim[i+l];return `<div class="ch${cx?' cx':''}"><label><input type="radio" name="q${i}" value="${l}"${picks[i]===l?' checked':''}>${col?`<b>${l}</b><span>${d.opts[j]}</span>`:l}</label><button type="button" class="x${cx?' on':''}" data-i="${i}" data-l="${l}" title="Cross out / restore this choice" aria-label="Cross out choice ${l}" aria-pressed="${cx?'true':'false'}">✕</button></div>`}).join('')+`</fieldset><p class="xhint">✕ crosses out a choice you have eliminated (for your own use; not graded).</p></section>`;
  return h}
+
+/* ---- Highlighter (Reading and Writing) ---- */
+const HL={};let hlTool='off';
+const HL_ALPHA=.5,HL_COL='255,214,0',HL_TH=.019; // thickness as a fraction of the width
+function hlRect(s,W,H){const th=HL_TH*W,x1=Math.min(s.x1,s.x2)*W,x2=Math.max(s.x1,s.x2)*W;return {x:x1,y:s.y*H-th/2,w:Math.max(1,x2-x1),h:th}}
+function hlPaint(cv,i){const W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;const r=window.devicePixelRatio||1;
+ if(cv.width!==Math.round(W*r)||cv.height!==Math.round(H*r)){cv.width=Math.round(W*r);cv.height=Math.round(H*r)}
+ const c=cv.getContext('2d');c.setTransform(r,0,0,r,0,0);c.clearRect(0,0,W,H);c.fillStyle='rgba('+HL_COL+','+HL_ALPHA+')';
+ (HL[i]||[]).forEach(s=>{const q=hlRect(s,W,H);c.fillRect(q.x,q.y,q.w,q.h)})}
+function hlRedraw(zw){const cv=zw.querySelector('.hlc');if(cv)hlPaint(cv,+zw.dataset.hl)}
+const hlRO=window.ResizeObserver?new ResizeObserver(es=>es.forEach(e=>hlRedraw(e.target))):null;
+function hlPoint(e,cv){const b=cv.getBoundingClientRect();return {x:Math.min(1,Math.max(0,(e.clientX-b.left)/b.width)),y:Math.min(1,Math.max(0,(e.clientY-b.top)/b.height)),W:b.width,H:b.height}}
+function hlErase(i,p){const a=HL[i];if(!a)return false;const n=a.length;
+ HL[i]=a.filter(s=>{const q=hlRect(s,p.W,p.H),px=p.x*p.W,py=p.y*p.H;return !(px>=q.x-6&&px<=q.x+q.w+6&&py>=q.y-6&&py<=q.y+q.h+6)});return HL[i].length!==n}
+function hlBind(zw,cv){let cur=null;
+ cv.addEventListener('click',e=>{e.stopPropagation()});
+ cv.addEventListener('pointerdown',e=>{if(hlTool==='off'||(e.pointerType==='mouse'&&e.button!==0))return;e.preventDefault();
+  const i=+zw.dataset.hl,p=hlPoint(e,cv);try{cv.setPointerCapture(e.pointerId)}catch(_e){}
+  if(hlTool==='erase'){cur={erase:true};if(hlErase(i,p))hlPaint(cv,i);return}
+  const s={y:p.y,x1:p.x,x2:p.x};(HL[i]=HL[i]||[]).push(s);cur={s:s};hlPaint(cv,i)});
+ cv.addEventListener('pointermove',e=>{if(!cur)return;const i=+zw.dataset.hl,p=hlPoint(e,cv);
+  if(cur.erase){if(hlErase(i,p))hlPaint(cv,i);return}cur.s.x2=p.x;hlPaint(cv,i)});
+ const end=e=>{if(!cur)return;const i=+zw.dataset.hl;if(cur.s&&Math.abs(cur.s.x2-cur.s.x1)<.01){HL[i]=HL[i].filter(x=>x!==cur.s);hlPaint(cv,i)}cur=null;try{cv.releasePointerCapture(e.pointerId)}catch(_e){}};
+ cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+}
+function hlAttach(mi){const m=MODS[mi];if(m.sec!=='en')return;
+ document.querySelectorAll('#qs > section.card').forEach((card,k)=>{const i=m.ix[k];if(i==null)return;
+  card.querySelectorAll('.zw').forEach(zw=>{if(zw.querySelector('.hlc'))return;zw.dataset.hl=i;
+   const cv=document.createElement('canvas');cv.className='hlc';cv.setAttribute('aria-hidden','true');zw.appendChild(cv);hlBind(zw,cv);
+   if(hlRO)hlRO.observe(zw);const im=zw.querySelector('img');if(im&&!im.complete)im.addEventListener('load',()=>hlRedraw(zw));hlRedraw(zw)})})}
+function hlSetTool(t){hlTool=t;document.body.classList.toggle('hl-pen',t==='pen');document.body.classList.toggle('hl-erase',t==='erase');
+ $('hl-btn').classList.toggle('on',t==='pen');$('hl-er').classList.toggle('on',t==='erase');
+ $('hl-btn').setAttribute('aria-pressed',t==='pen');$('hl-er').setAttribute('aria-pressed',t==='erase')}
+$('hl-btn').onclick=()=>hlSetTool(hlTool==='pen'?'off':'pen');
+$('hl-er').onclick=()=>hlSetTool(hlTool==='erase'?'off':'erase');
+$('hl-clr').onclick=()=>{if(!MODS[cur]||MODS[cur].sec!=='en')return;if(!confirm('Remove all highlights in this module?'))return;
+ MODS[cur].ix.forEach(i=>{HL[i]=[]});document.querySelectorAll('#qs .zw').forEach(hlRedraw)};
+function hlUpdate(id){const on=id==='s-test'&&MODS[cur]&&MODS[cur].sec==='en';$('hl-tools').classList.toggle('hide',!on);if(!on)hlSetTool('off')}
+const __show=show;show=function(id){__show(id);hlUpdate(id)};
+/* zoom view: show the highlights as well */
+let hlZW=null;
+function hlZoomInit(w){hlZW=w;const z=$('zin');const old=z.querySelector('.hlzc');if(old)old.remove();
+ if(!w.dataset.hl||!(HL[+w.dataset.hl]||[]).length)return;const cv=document.createElement('canvas');cv.className='hlzc';cv.setAttribute('aria-hidden','true');z.appendChild(cv);
+ const im=z.querySelector('img');if(im&&!im.complete)im.addEventListener('load',hlZoomDraw)}
+function hlZoomDraw(){const cv=$('zin').querySelector('.hlzc');if(!cv||!hlZW)return;hlPaint(cv,+hlZW.dataset.hl)}
+if(window.ResizeObserver)new ResizeObserver(()=>hlZoomDraw()).observe($('zin'));
+$('steps').insertAdjacentHTML('beforeend','<li>In Reading and Writing, use <b>🖍 Highlighter</b> (top right), then press and drag across a line of text to highlight it. <b>Eraser</b> removes a highlight, <b>Clear</b> removes all of them in the module. Highlights are just for you — they are not graded.</li>');
 function buildModule(mi){
  const m=MODS[mi];
  $('qs').innerHTML=m.ix.map((i,k)=>qHTML(i,k)).join('');
@@ -225,7 +288,7 @@ function buildModule(mi){
  document.querySelectorAll('#qs .x').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i,l=b.dataset.l,c=b.closest('.ch'),on=!elim[i+l];
   if(on){elim[i+l]=1;if(picks[i]===l){picks[i]='';c.querySelector('input').checked=false}}else delete elim[i+l];
   c.classList.toggle('cx',on);b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);prog()}));
- typeset($('qs'));
+ hlAttach(mi);typeset($('qs'));
 }
 function typeset(el){try{if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([el])}catch(e){}}
 function prog(){const ix=MODS[cur].ix;const n=ix.filter(i=>picks[i]).length;$('prog').textContent=n+' / '+ix.length+' answered';$('barf').style.width=(100*n/ix.length)+'%';$('warn').textContent='';confirmSub=false;$('submit').textContent='Submit Module '+MODS[cur].m}
